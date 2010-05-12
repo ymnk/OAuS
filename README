@@ -40,3 +40,30 @@ How To Use
   urlConn.connect
   urlConn.getReponseCode
 
+  /*****/
+
+  /* using commons-httpclient */
+
+  import com.jcraft.oaus._
+  import org.apache.commons.httpclient._
+  import org.apache.commons.httpclient.methods._
+
+  val url = "http://api.twitter.com/1/statuses/update.xml"
+  val client = new HttpClient
+  val method = new PostMethod(url)
+
+  val tweet = "Hello "+(new java.util.Date)
+
+  method.addParameter("status", tweet);
+
+  val oc = new OAuthClient(CONSUMER_KEY, CONSUMER_SECRET)
+  oc.signGetRequest(url, 
+                    "status="+tweet, 
+                    ACCESS_TOKEN, TOKEN_SECRET) {
+    method.setRequestHeader(_, _)
+  }
+
+  println(clinet.executeMethod(method))
+  println(xml.XML.load(method.getResponseBodyAsStream))
+
+  method.releaseConnection
