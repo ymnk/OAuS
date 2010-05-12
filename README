@@ -1,0 +1,60 @@
+OAuS is an implementation of OAuth[1] client in Scala.
+
+[1] http://www.rfc-editor.org/rfc/rfc5849.txt
+
+How To Use
+==========
+  /* using java.net.HttpURLConnection */
+
+  val url = new URL("http://example.com/foo")
+  val urlConn = new URL(url).openConnection.asInstanceOf[HttpURLConnection]
+ 
+  import com.jcraft.oaus.OAuthClient
+  valoc = new OAuthClient(CONSUMER_KEY, CONSUMER_SECRET)
+  oc.signGetRequest(rul, ACCESS_TOKEN, TOKEN_SECRET) {
+    (k, v) => urlConn.setRequestProperty(k, v)
+  }
+
+  urlConn.connect
+  urlConn.getReponseCode
+
+  /*****/
+
+  val url = new URL("http://example.com/foo")
+  val urlConn = new URL(url).openConnection.asInstanceOf[HttpURLConnection]
+  urlConn.setRequestMethod("POST")     
+  urlConn.setDoOutput(true);
+
+  val data = "foo=1&bar=2"
+
+  import com.jcraft.oaus.OAuthClient
+  valoc = new OAuthClient(CONSUMER_KEY, CONSUMER_SECRET)
+  oc.signGetRequest(rul, data, ACCESS_TOKEN, TOKEN_SECRET) {
+    (k, v) => urlConn.setRequestProperty(k, v)
+  }
+
+  val writer = new java.io.PrintWriter(urlConn.getOutputStream)
+  writer.print(data)
+  writer.close()
+
+  urlConn.connect
+  urlConn.getReponseCode
+
+  /*****/
+
+  /* using HttpClient */
+
+  import org.apache.commons.httpclient._
+  import com.jcraft.oaus._
+
+  val url = "http://example.com/foo"
+  val client = new HttpClient
+  val method = new GetMethod(url)
+
+  import com.jcraft.oaus.OAuthClient
+  val oc = new OAuthClient(CONSUMER_KEY, CONSUMER_SECRET)
+  oc.signGetRequest(url, ACCESS_TOKEN, TOKEN_SECRET) match {
+    case (k, v) => method.addRequestHeader(new Header(k, v))
+  }
+
+  clinet.executeMethod(method)
