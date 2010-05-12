@@ -4,7 +4,7 @@ OAuS is an implementation of OAuth[1] client in Scala.
 
 How To Use
 ==========
-  /* using java.net.HttpURLConnection */
+  /* Using java.net.HttpURLConnection */
 
   val url = new URL("http://example.com/foo")
   val urlConn = new URL(url).openConnection.asInstanceOf[HttpURLConnection]
@@ -40,21 +40,3 @@ How To Use
   urlConn.connect
   urlConn.getReponseCode
 
-  /*****/
-
-  /* using HttpClient */
-
-  import org.apache.commons.httpclient._
-  import com.jcraft.oaus._
-
-  val url = "http://example.com/foo"
-  val client = new HttpClient
-  val method = new GetMethod(url)
-
-  import com.jcraft.oaus.OAuthClient
-  val oc = new OAuthClient(CONSUMER_KEY, CONSUMER_SECRET)
-  oc.signGetRequest(url, ACCESS_TOKEN, TOKEN_SECRET) match {
-    case (k, v) => method.addRequestHeader(new Header(k, v))
-  }
-
-  clinet.executeMethod(method)
