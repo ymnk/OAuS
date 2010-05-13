@@ -30,6 +30,12 @@ package com.jcraft.oaus
 import _root_.java.net.{URL, HttpURLConnection}
 import _root_.com.jcraft.oaus.Util.{urlencoder, urldecoder}
 
+/** 
+ * Comments will refer to 'The OAuth 1.0 Protocol'[1].
+ *
+ * [1] http://tools.ietf.org/rfc/rfc5849.txt
+ */
+
 /**
  * <pre>
  * val url = new URL("http://example.com/foo")
@@ -44,12 +50,7 @@ import _root_.com.jcraft.oaus.Util.{urlencoder, urldecoder}
  * urlConn.connect
  * urlConn.getReponseCode
  * </pre>
- * 
- * Comments will refer to 'OAuth Core 1.0'[1].
- *
- * [1] http://oauth.net/core/1.0/
  */ 
-
 class OAuthClient(val clientCredential: ClientCredential) {
 
   import _root_.scala.collection.mutable.Map
@@ -81,38 +82,37 @@ class OAuthClient(val clientCredential: ClientCredential) {
 
     val (base_uri, user_params) = normalize(uri, query_string)
 
-    /**
-     * "7. Accessing ProtectedResources" has defined following parameters.
-     */ 
-
+    // The following protocol parameters are defined at "3.1.  Making Requests".
     val oauth_params = Map(
         "oauth_consumer_key" -> urlencoder(clientCredential.identifier),
+	"oauth_token"-> tokenCredential.map(_.oauth_token).getOrElse(""),
         "oauth_signature_method" -> signature.methodName,
         "oauth_timestamp" -> (System.currentTimeMillis / 1000).toString,
         "oauth_nonce" -> java.util.UUID.randomUUID.toString,
-        "oauth_version" -> "1.0",       // Optional
-	"oauth_token"-> tokenCredential.map(_.oauth_token).getOrElse(""))
+        "oauth_version" -> "1.0")
 
+    // If auxially protocol parameters(for example, "oauth_callback")
+    // are given, they should be added to oauth_params.
     oauth_param_aux.foreach{ _.foreach { 
       case (k, v) => oauth_params += (k -> urlencoder(v) )
     }}
 
-    if(oauth_params("oauth_token")=="")
+    // RFC5849 allows to send empty "oauth_token"(Appendix A) in requesting
+    // temporary credentials, but Twitter must not accept it ;-(
+    if(oauth_params("oauth_token") == "")
       oauth_params -= "oauth_token"
 
 
-    /**
-     * 9.1.3. Concatenate Request Elements
-     */ 
-    val signature_base_string = 
+    // 3.4.1. Signature Base String
+    val signatureBaseString = 
       method.toString + "&" +
       urlencoder(uri) + "&" +
-      (sort((user_params ++ oauth_params).toSeq) map {
+      (sort((user_params ++ oauth_params).toSeq) map {       // Section 3.4.1.3.2
         case (k, v) => urlencoder(k) + "%3D" + urlencoder(v)
       } mkString "%26")
 
     val _signature= 
-      signature(signature_base_string, 
+      signature(signatureBaseString,
                 clientCredential.secret,
                 tokenCredential map { _.oauth_token_secret } getOrElse "")
 
@@ -125,6 +125,7 @@ class OAuthClient(val clientCredential: ClientCredential) {
   private def normalize(uri: String, query_string: Option[String]) = {
     import java.net.URI
 
+    // 3.4.1.2.  Base String URI
     def normalizeURL(uri: URI) = {
       val scheme = uri.getScheme.toLowerCase
       val port = uri.getPort
@@ -143,9 +144,14 @@ class OAuthClient(val clientCredential: ClientCredential) {
     }
 
     val _uri = new java.net.URI(uri)
+
     val query = if(_uri.getRawQuery == null) "" else _uri.getRawQuery
 
     (normalizeURL(_uri),
+     // 3.4.1.3.1.  Parameter Sources
+     // The parameters are from the query of URI and
+     // from the HTTP request entity-body; query_string, in this case.
+     // At the later step, the protcol parameters will be appended and be sorted.
      (query + "&" + query_string.getOrElse("")).
         split("&").
         filter(s => { s != "" }).
@@ -160,8 +166,10 @@ class OAuthClient(val clientCredential: ClientCredential) {
   }
 
   /**
-   * 9.1.1 Normalize Request Parameters
-   * If two or more parameters share the same name, they are sorted by their value.
+   * 3.4.1.3.2.  Parameters Normalization
+   * 2. The parameters are sorted by name, using ascending byte value
+   *    ordering.  If two or more parameters share the same name, they
+   *    are sorted by their value.
    */ 
   private def sort(s:Seq[Parameter]) = {
     def sorter(x: Parameter, y: Parameter): Boolean = 

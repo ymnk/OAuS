@@ -27,13 +27,20 @@ modification, are permitted provided that the following conditions are met:
 */
 package com.jcraft.oaus
 
+/** 
+ * Comments will refer to 'The OAuth 1.0 Protocol'[1].
+ *
+ * [1] http://tools.ietf.org/rfc/rfc5849.txt
+ */
+
 private object Util {
 
   /**
-   * 5.1 Parameter Encoding
-   * Characters in the unreserved character set MUST NOT be encoded,
-   * and '~' is included in the unreserved character.
-   * URLEncoder will encode ' ' to '+'.
+   * 3.6 Percent Encoding
+   * Characters in the unreserved character set as defined by [RFC3986],
+   * Section 2.3 (ALPHA, DIGIT, "-", ".", "_", "~") MUST NOT be encoded.
+   * URLEncoder will encode ' ' to '+', and '~' to '%7E',
+   * and will not encode '*', unfortunately.
    */ 
   val urlencoder = 
     (s:String) => java.net.URLEncoder.encode(s, "UTF-8").

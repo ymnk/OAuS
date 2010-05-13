@@ -29,6 +29,12 @@ package com.jcraft.oaus
 
 import _root_.com.jcraft.oaus.Util.{b64encoder, urlencoder, urldecoder}
 
+/**
+ * Comments will refer to 'The OAuth 1.0 Protocol'[1].
+ *
+ * [1] http://tools.ietf.org/rfc/rfc5849.txt
+ */ 
+
 trait Signature {
   def methodName: String
 
@@ -39,6 +45,7 @@ trait Signature {
   protected def toString(buf: Array[Byte]) = new String(b64encoder(buf))
 }
 
+// 3.4.2.  HMAC-SHA1
 object HMACSHA1 extends Signature {
   import javax.crypto._
 
@@ -55,6 +62,7 @@ object HMACSHA1 extends Signature {
   }
 } 
 
+// 3.4.4.  PLAINTEXT
 object PLAINTEXT extends Signature {
 
   val methodName = "PLAINTEXT"

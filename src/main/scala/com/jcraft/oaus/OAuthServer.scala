@@ -30,16 +30,22 @@ package com.jcraft.oaus
 import java.net.{URL, HttpURLConnection}
 import scala.io.Source.fromInputStream
 
+/** 
+ * Comments will refer to 'The OAuth 1.0 Protocol'[1].
+ *
+ * [1] http://tools.ietf.org/rfc/rfc5849.txt
+ */
+
 trait OAuthServer {
 
+  // 2. Redirection-Based Authorization
   def temporaryCredentialRequestURI: String 
-
   def resourceOwnerAuthorizationURI: String 
-
   def tokenRequestURI: String 
 
+  // 2.1. Temporary Credentials
   def requestTemporaryCredential(c: OAuthClient): TemporaryCredential = 
-    requestTemporaryCredential(c, "oob")
+    requestTemporaryCredential(c, "oob")  // out-of-band as callback, by the default.
 
   def requestTemporaryCredential(c: OAuthClient, 
                                  call_back:String): TemporaryCredential = {
@@ -71,6 +77,11 @@ trait OAuthServer {
 
   }
 
+  // 2.2.  Resource Owner Authorization
+  def authorizationURI(tmpc:TemporaryCredential) = 
+    resourceOwnerAuthorizationURI+"?oauth_token="+tmpc.oauth_token
+
+  // 2.3. Token Credentials
   def tokenCredential(c: OAuthClient, tmpc:TemporaryCredential, verifier:String) = {
     var urlConn = new URL(tokenRequestURI).openConnection.asInstanceOf[HttpURLConnection]
     urlConn.setRequestMethod("POST")     
@@ -102,9 +113,6 @@ trait OAuthServer {
     response.split("&").foldLeft(Map[String,String]()){ case (s, v) => 
       s + {v.split("=") match {case Array(k, v) => (k, v)}}
   }
-
-  def authorizationURI(tmpc:TemporaryCredential) = 
-    resourceOwnerAuthorizationURI+"?oauth_token="+tmpc.oauth_token
 }
 
 object Twitter extends OAuthServer {
