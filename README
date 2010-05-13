@@ -10,7 +10,7 @@ How To Use
   val urlConn = new URL(url).openConnection.asInstanceOf[HttpURLConnection]
  
   import com.jcraft.oaus.OAuthClient
-  valoc = new OAuthClient(CONSUMER_KEY, CONSUMER_SECRET)
+  val oc = new OAuthClient(CONSUMER_KEY, CONSUMER_SECRET)
   oc.signGetRequest(rul, ACCESS_TOKEN, TOKEN_SECRET) {
     (k, v) => urlConn.setRequestProperty(k, v)
   }
@@ -28,8 +28,8 @@ How To Use
   val data = "foo=1&bar=2"
 
   import com.jcraft.oaus.OAuthClient
-  valoc = new OAuthClient(CONSUMER_KEY, CONSUMER_SECRET)
-  oc.signGetRequest(rul, data, ACCESS_TOKEN, TOKEN_SECRET) {
+  val oc = new OAuthClient(CONSUMER_KEY, CONSUMER_SECRET)
+  oc.signPostRequest(rul, data, ACCESS_TOKEN, TOKEN_SECRET) {
     (k, v) => urlConn.setRequestProperty(k, v)
   }
 
@@ -57,7 +57,7 @@ How To Use
   method.addParameter("status", tweet);
 
   val oc = new OAuthClient(CONSUMER_KEY, CONSUMER_SECRET)
-  oc.signGetRequest(url, 
+  oc.signPostRequest(url, 
                     "status="+tweet, 
                     ACCESS_TOKEN, TOKEN_SECRET) {
     method.setRequestHeader(_, _)
