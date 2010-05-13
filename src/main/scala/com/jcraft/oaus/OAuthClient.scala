@@ -36,8 +36,10 @@ import _root_.com.jcraft.oaus.Util.{urlencoder, urldecoder}
  * val urlConn = url.openConnection.asInstanceOf[HttpURLConnection]
  *
  * import com.jcraft.oaus.OAuthClient
- * val consumer = new OAuthClient(CONSUMER_KEY, CONSUMER_SECRET)
- * consumer.sign(rulConn, ACCESS_TOKEN, TOKEN_SECRET)
+ * val clientCredential = ClientCredential(CONSUMER_KEY, CONSUMER_SECRET)
+ * val tokenCredential = TokenCredential(ACCESS_TOKEN, TOKEN_SECRET)
+ * val oac = new OAuthClient(clientCredential)
+ * oac.sign(rulConn, tokenCredential)
  * 
  * urlConn.connect
  * urlConn.getReponseCode
@@ -48,50 +50,48 @@ import _root_.com.jcraft.oaus.Util.{urlencoder, urldecoder}
  * [1] http://oauth.net/core/1.0/
  */ 
 
-class OAuthClient(val consumer_key: String, 
-                  val consumer_secret: String){
+class OAuthClient(val clientCredential: ClientCredential) {
 
   import _root_.scala.collection.mutable.Map
 
-  type Credential = (String, String)
   type Parameter = (String, String)
 
   var signature: Signature = HMACSHA1
 
 
-  def signGetRequest(url: String, 
-                     access_token: String, token_secret: String 
-                    )(f: (String, String) => Unit): Unit = {
-    sign(HTTPMethod.GET, url, None, None, Some((access_token, token_secret)))(f)
+  def signGetRequest(uri: String,
+                     tokenCredential: TokenCredential)
+                    (f: (String, String) => Unit): Unit = {
+    sign(HTTPMethod.GET, uri, None, Some(tokenCredential), None)(f)
   } 
 
-  def signPostRequest(url: String, 
+  def signPostRequest(uri: String, 
                       query_string: String,
-                      access_token: String, token_secret: String 
-                     )(f: (String, String) => Unit): Unit = {
-    sign(HTTPMethod.POST, url, Some(query_string), None, Some((access_token, token_secret)))(f)
+                      tokenCredential: TokenCredential)
+                     (f: (String, String) => Unit): Unit = {
+    sign(HTTPMethod.POST, uri, Some(query_string), Some(tokenCredential), None)(f)
   } 
 
   def sign(method: HTTPMethod.Value,
-           url: String, 
+           uri: String, 
            query_string: Option[String],
-           oauth_param_aux: Option[Seq[Parameter]],
-           token: Option[Credential]
+           tokenCredential: Option[TokenCredential],
+           oauth_param_aux: Option[Seq[Parameter]]
           )(f: (String, String) => Unit): Unit = {
 
-    val (base_url, user_params) = normalize(url, query_string)
+    val (base_uri, user_params) = normalize(uri, query_string)
 
     /**
      * "7. Accessing ProtectedResources" has defined following parameters.
      */ 
 
     val oauth_params = Map(
-        "oauth_consumer_key" -> urlencoder(consumer_key),
+        "oauth_consumer_key" -> urlencoder(clientCredential.identifier),
         "oauth_signature_method" -> signature.methodName,
         "oauth_timestamp" -> (System.currentTimeMillis / 1000).toString,
         "oauth_nonce" -> java.util.UUID.randomUUID.toString,
         "oauth_version" -> "1.0",       // Optional
-	"oauth_token"-> token.map(_._1).getOrElse(""))
+	"oauth_token"-> tokenCredential.map(_.oauth_token).getOrElse(""))
 
     oauth_param_aux.foreach{ _.foreach { 
       case (k, v) => oauth_params += (k -> urlencoder(v) )
@@ -106,15 +106,15 @@ class OAuthClient(val consumer_key: String,
      */ 
     val signature_base_string = 
       method.toString + "&" +
-      urlencoder(url) + "&" +
+      urlencoder(uri) + "&" +
       (sort((user_params ++ oauth_params).toSeq) map {
         case (k, v) => urlencoder(k) + "%3D" + urlencoder(v)
       } mkString "%26")
 
     val _signature= 
       signature(signature_base_string, 
-                consumer_secret, 
-                token map { _._2 } getOrElse "")
+                clientCredential.secret,
+                tokenCredential map { _.oauth_token_secret } getOrElse "")
 
     f("Authorization", 
       "OAuth " + ((oauth_params + ("oauth_signature" -> urlencoder(_signature))) map {
@@ -122,7 +122,7 @@ class OAuthClient(val consumer_key: String,
       } mkString ","))
   }
 
-  private def normalize(url: String, query_string: Option[String]) = {
+  private def normalize(uri: String, query_string: Option[String]) = {
     import java.net.URI
 
     def normalizeURL(uri: URI) = {
@@ -142,10 +142,10 @@ class OAuthClient(val consumer_key: String,
       scheme + "://" + authority + path
     }
 
-    val uri = new java.net.URI(url)
-    val query = if(uri.getRawQuery == null) "" else uri.getRawQuery
+    val _uri = new java.net.URI(uri)
+    val query = if(_uri.getRawQuery == null) "" else _uri.getRawQuery
 
-    (normalizeURL(uri),
+    (normalizeURL(_uri),
      (query + "&" + query_string.getOrElse("")).
         split("&").
         filter(s => { s != "" }).

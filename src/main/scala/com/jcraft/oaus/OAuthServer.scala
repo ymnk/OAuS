@@ -32,24 +32,29 @@ import scala.io.Source.fromInputStream
 
 trait OAuthServer {
 
-  def requestTokenURL: String 
+  def temporaryCredentialRequestURI: String 
 
-  def authorizationURL: String 
+  def resourceOwnerAuthorizationURI: String 
 
-  def accessTokenURL: String 
+  def tokenRequestURI: String 
 
-  def requestToken(c: OAuthClient): RequestToken = requestToken(c, "oob")
+  def requestTemporaryCredential(c: OAuthClient): TemporaryCredential = 
+    requestTemporaryCredential(c, "oob")
 
-  def requestToken(c: OAuthClient, call_back:String): RequestToken = {
-    var urlConn = new URL(requestTokenURL).openConnection.asInstanceOf[HttpURLConnection]
+  def requestTemporaryCredential(c: OAuthClient, 
+                                 call_back:String): TemporaryCredential = {
+    var urlConn = 
+      new URL(temporaryCredentialRequestURI).openConnection.
+        asInstanceOf[HttpURLConnection]
+
     urlConn.setRequestMethod("POST")     
     urlConn.setDoOutput(true);
 
     c.sign(HTTPMethod("POST"), 
-           requestTokenURL, 
+           temporaryCredentialRequestURI,
            None,
-           Some(List("oauth_callback" -> call_back)),
-           None) {
+           None,
+           Some(List("oauth_callback" -> call_back))) {
       (k, v) => urlConn.setRequestProperty(k, v)
     }
 
@@ -58,7 +63,7 @@ trait OAuthServer {
         val response = 
           fromInputStream(urlConn.getInputStream, "UTF-8").getLines mkString ""
         val map = response2Map(response) 
-        new RequestToken(map("oauth_token"), map("oauth_token_secret"))
+        TemporaryCredential(map("oauth_token"), map("oauth_token_secret"))
       case c => 
         val message = urlConn.getHeaderField("WWW-Authenticate")
         error(c+" "+message)
@@ -66,16 +71,18 @@ trait OAuthServer {
 
   }
 
-  def accessToken(c: OAuthClient, requestToken:RequestToken, verifier:String) = {
-    var urlConn = new URL(accessTokenURL).openConnection.asInstanceOf[HttpURLConnection]
+  def tokenCredential(c: OAuthClient, tmpc:TemporaryCredential, verifier:String) = {
+    var urlConn = new URL(tokenRequestURI).openConnection.asInstanceOf[HttpURLConnection]
     urlConn.setRequestMethod("POST")     
     urlConn.setDoOutput(true);
 
+    val tknc = TokenCredential(tmpc.oauth_token, tmpc.oauth_verifier)
+
     c.sign(HTTPMethod("POST"), 
-           accessTokenURL, 
+           tokenRequestURI, 
            None,
-           Some(List(("oauth_verifier" -> (verifier.trim)))),
-	   Some((requestToken.oauth_token, requestToken.oauth_token_secret))) {
+	   Some(tknc),
+           Some(List(("oauth_verifier" -> (verifier.trim))))) {
       (k, v) => urlConn.setRequestProperty(k, v)
     }
 
@@ -84,7 +91,7 @@ trait OAuthServer {
         val response = 
           fromInputStream(urlConn.getInputStream, "UTF-8").getLines mkString ""
         val map = response2Map(response) 
-        new RequestToken(map("oauth_token"), map("oauth_token_secret"))
+        TokenCredential(map("oauth_token"), map("oauth_token_secret"))
       case c => 
         val message = urlConn.getHeaderField("WWW-Authenticate")
         error(c+" "+message)
@@ -96,32 +103,30 @@ trait OAuthServer {
       s + {v.split("=") match {case Array(k, v) => (k, v)}}
   }
 
-  class RequestToken(val oauth_token: String, val oauth_token_secret: String)
-
-  def authorizeURL(requestToken:RequestToken) = 
-    authorizationURL+"?oauth_token="+requestToken.oauth_token
+  def authorizationURI(tmpc:TemporaryCredential) = 
+    resourceOwnerAuthorizationURI+"?oauth_token="+tmpc.oauth_token
 }
 
 object Twitter extends OAuthServer {
-  val requestTokenURL = "http://twitter.com/oauth/request_token"
-  val authorizationURL = "http://twitter.com/oauth/authorize"
-  val accessTokenURL = "https://twitter.com/oauth/access_token"
+  val temporaryCredentialRequestURI = "http://twitter.com/oauth/request_token"
+  val resourceOwnerAuthorizationURI = "http://twitter.com/oauth/authorize"
+  val tokenRequestURI = "https://twitter.com/oauth/access_token"
 }
 
 object Foursquare extends OAuthServer {
-  val requestTokenURL = "http://foursquare.com/oauth/request_token"
-  val authorizationURL = "http://foursquare.com/oauth/authorize"
-  val accessTokenURL = "http://foursquare.com/oauth/access_token"
+  val temporaryCredentialRequestURI = "http://foursquare.com/oauth/request_token"
+  val resourceOwnerAuthorizationURI = "http://foursquare.com/oauth/authorize"
+  val tokenRequestURI = "http://foursquare.com/oauth/access_token"
 }
 
 object YahooCom extends OAuthServer {
-  val requestTokenURL = "https://api.login.yahoo.com/oauth/v2/get_request_token"
-  val authorizationURL = "https://api.login.yahoo.com/oauth/v2/request_auth"
-  val accessTokenURL = "https://api.login.yahoo.com/oauth/v2/get_token"
+  val temporaryCredentialRequestURI = "https://api.login.yahoo.com/oauth/v2/get_request_token"
+  val resourceOwnerAuthorizationURI = "https://api.login.yahoo.com/oauth/v2/request_auth"
+  val tokenRequestURI = "https://api.login.yahoo.com/oauth/v2/get_token"
 }
 
 object YahooCoJp extends OAuthServer {
-  val requestTokenURL = "https://auth.login.yahoo.co.jp/oauth/v2/get_request_token"
-  val authorizationURL = "https://auth.login.yahoo.co.jp/oauth/v2/request_auth"
-  val accessTokenURL = "https://auth.login.yahoo.co.jp/oauth/v2/get_token"
+  val temporaryCredentialRequestURI = "https://auth.login.yahoo.co.jp/oauth/v2/get_request_token"
+  val resourceOwnerAuthorizationURI = "https://auth.login.yahoo.co.jp/oauth/v2/request_auth"
+  val tokenRequestURI = "https://auth.login.yahoo.co.jp/oauth/v2/get_token"
 }
