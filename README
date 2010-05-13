@@ -29,7 +29,6 @@ How To Use
 
   val data = "foo=1&bar=2"
 
-
   import com.jcraft.oaus.{OAuthClient, ClientCredential, TokenCredential}
   val clientCredential = ClientCredential(CONSUMER_KEY, CONSUMER_SECRET)
   val tokenCredential = TokenCredential(ACCESS_TOKEN, TOKEN_SECRET)
@@ -75,3 +74,37 @@ How To Use
   println(xml.XML.load(method.getResponseBodyAsStream))
 
   method.releaseConnection
+
+
+Examples
+========
+The 'examples' directory includes following examples,
+  * Tweet.scala
+    This is a demonstration to tweet with OAuth authentication.
+    You need to specify CONSUMER_KEY, CONSUMER_SECRET, etc., to try it.
+  * GetTokenCredential.scala    
+    This is a demonstration to show how to get token credentials for Twitter.
+    You need to specify CONSUMER_KEY, CONSUMER_SECRET to try it.
+
+
+Terminology
+===========
+The terminology used in RFC5849 are different from the terminology in
+the previous spec(http://oauth.net/core/1.0a/).  In developing OAuS,
+we have adopted the terminology from RFC5849, but all of the documents on
+the web have used the previous one, unfortunately. 
+If you are familiar with the older terminology, following mapping may be 
+useful in using OAuS,
+
+  http://oauth.net/core/1.0a/ |   RFC5849
+  Consumer:                   |   client
+  Service Provider:           |   server
+  User:                       |   resource owner
+  Consumer Key and Secret:    |   client credentials
+  Request Token and Secret:   |   temporary credentials
+  Access Token and Secret:    |   token credentials
+
+
+TODO
+====
+  * support for RSA-SHA1 signature method.
