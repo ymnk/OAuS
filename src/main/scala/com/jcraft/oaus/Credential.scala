@@ -33,7 +33,20 @@ trait Credential
 case class ClientCredential(
   val identifier: String, 
   val secret: String
-) extends Credential
+) extends Credential {
+
+  var pkey: Option[java.security.PrivateKey] = None
+
+  def withPrivateKey(p: java.io.File) = {
+    import java.security._
+    import java.security.spec._
+    val buf = new Array[Byte](p.length.asInstanceOf[Int])
+    val i = new java.io.FileInputStream(p).read(buf)
+    val keyFactory = KeyFactory.getInstance("RSA")
+    pkey = Some(keyFactory.generatePrivate(new PKCS8EncodedKeySpec(buf)))
+    this
+  }
+}
 
 @serializable
 case class TemporaryCredential(

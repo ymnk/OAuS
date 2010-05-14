@@ -39,7 +39,7 @@ trait Signature {
   def methodName: String
 
   def apply(signatureBaseString: String, 
-            consumer_secret: String,
+            clientC: ClientCredential,
             key: String): String
 
   protected def toString(buf: Array[Byte]) = new String(b64encoder(buf))
@@ -52,13 +52,31 @@ object HMACSHA1 extends Signature {
   val methodName = "HMAC-SHA1"
 
   def apply(signatureBaseString: String, 
-            consumerSecret: String,
+            clientC: ClientCredential,
             key: String): String = {
     val SHA1 = "HmacSHA1"
     val mac = Mac.getInstance(SHA1)
-    val _key = (urlencoder(consumerSecret) + "&" + urlencoder(key)).getBytes("UTF-8")
+    val _key = (urlencoder(clientC.secret) + "&" + urlencoder(key)).getBytes("UTF-8")
     mac.init(new spec.SecretKeySpec(_key, SHA1))
     toString(mac.doFinal(signatureBaseString.getBytes("UTF-8")))
+  }
+} 
+
+// 3.4.3.  RSA-SHA1
+object RSASHA1 extends Signature {
+
+  val methodName = "RSA-SHA1"
+
+  def apply(signatureBaseString: String, 
+            clientC: ClientCredential,
+            key: String): String = {
+    clientC.pkey.map{ privateKey => 
+      import java.security.Signature
+      val signer = Signature.getInstance("SHA1withRSA")
+      signer.initSign(privateKey)
+      signer.update(signatureBaseString.getBytes("UTF-8"))
+      toString(signer.sign)
+    } getOrElse { error("The private key is not given") }
   }
 } 
 
@@ -68,8 +86,8 @@ object PLAINTEXT extends Signature {
   val methodName = "PLAINTEXT"
 
   def apply(signatureBaseString: String, 
-            consumerSecret: String,
+            clientC: ClientCredential,
             key: String): String = {
-    urlencoder(consumerSecret) + "&" + urlencoder(key)
+    urlencoder(clientC.secret) + "&" + urlencoder(key)
   }
 } 

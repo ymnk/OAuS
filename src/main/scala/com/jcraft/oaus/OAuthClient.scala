@@ -106,14 +106,14 @@ class OAuthClient(val clientCredential: ClientCredential) {
     // 3.4.1. Signature Base String
     val signatureBaseString = 
       method.toString + "&" +
-      urlencoder(uri) + "&" +
+      urlencoder(base_uri) + "&" +
       (sort((user_params ++ oauth_params).toSeq) map {       // Section 3.4.1.3.2
         case (k, v) => urlencoder(k) + "%3D" + urlencoder(v)
       } mkString "%26")
 
     val _signature= 
       signature(signatureBaseString,
-                clientCredential.secret,
+                clientCredential,
                 tokenCredential map { _.oauth_token_secret } getOrElse "")
 
     f("Authorization", 
