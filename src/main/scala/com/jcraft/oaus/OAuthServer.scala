@@ -45,10 +45,17 @@ trait OAuthServer {
 
   // 2.1. Temporary Credentials
   def requestTemporaryCredential(c: OAuthClient): TemporaryCredential = 
-    requestTemporaryCredential(c, "oob")  // out-of-band as callback, by the default.
+    requestTemporaryCredential(c, "oob", None)  // out-of-band as callback, by the default.
 
   def requestTemporaryCredential(c: OAuthClient, 
                                  call_back:String): TemporaryCredential = {
+    requestTemporaryCredential(c, call_back, None)
+  }
+
+  def requestTemporaryCredential(c: OAuthClient, 
+                                 call_back:String,
+                                 param: Option[Map[String, String]]
+                                 ): TemporaryCredential = {
     var urlConn = 
       new URL(temporaryCredentialRequestURI).openConnection.
         asInstanceOf[HttpURLConnection]
@@ -56,13 +63,19 @@ trait OAuthServer {
     urlConn.setRequestMethod("POST")     
     urlConn.setDoOutput(true);
 
+    val data = param map { _.map{case (k, v) => "%s=%s".format(k, v) } mkString ("&") }
+
     c.sign(HTTPMethod("POST"), 
            temporaryCredentialRequestURI,
-           None,
+           data,
            None,
            Some(List("oauth_callback" -> call_back))) {
       (k, v) => urlConn.setRequestProperty(k, v)
     }
+
+    val writer = new java.io.PrintWriter(urlConn.getOutputStream)
+    data.foreach{ writer.print(_) }
+    writer.close()
 
     urlConn.getResponseCode match{
       case 200 =>
@@ -83,11 +96,13 @@ trait OAuthServer {
 
   // 2.3. Token Credentials
   def tokenCredential(c: OAuthClient, tmpc:TemporaryCredential, verifier:String) = {
-    var urlConn = new URL(tokenRequestURI).openConnection.asInstanceOf[HttpURLConnection]
-    urlConn.setRequestMethod("POST")     
-    urlConn.setDoOutput(true);
 
     val tknc = TokenCredential(tmpc.oauth_token, tmpc.oauth_verifier)
+
+    var urlConn = new URL(tokenRequestURI).openConnection.asInstanceOf[HttpURLConnection]
+
+    urlConn.setRequestMethod("POST")     
+    urlConn.setDoOutput(true);
 
     c.sign(HTTPMethod("POST"), 
            tokenRequestURI, 
@@ -96,6 +111,9 @@ trait OAuthServer {
            Some(List(("oauth_verifier" -> (verifier.trim))))) {
       (k, v) => urlConn.setRequestProperty(k, v)
     }
+
+    val writer = new java.io.PrintWriter(urlConn.getOutputStream)
+    writer.close()
 
     urlConn.getResponseCode match{
       case 200 =>
@@ -137,4 +155,14 @@ object YahooCoJp extends OAuthServer {
   val temporaryCredentialRequestURI = "https://auth.login.yahoo.co.jp/oauth/v2/get_request_token"
   val resourceOwnerAuthorizationURI = "https://auth.login.yahoo.co.jp/oauth/v2/request_auth"
   val tokenRequestURI = "https://auth.login.yahoo.co.jp/oauth/v2/get_token"
+}
+
+
+object Google extends OAuthServer {
+  
+  val temporaryCredentialRequestURI = 
+    "https://www.google.com/accounts/OAuthGetRequestToken"
+
+  val resourceOwnerAuthorizationURI = "https://www.google.com/accounts/OAuthAuthorizeToken"
+  val tokenRequestURI = "https://www.google.com/accounts/OAuthGetAccessToken"
 }
