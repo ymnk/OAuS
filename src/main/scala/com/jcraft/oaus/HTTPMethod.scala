@@ -34,6 +34,6 @@ object HTTPMethod extends Enumeration{
   val PUT = Value("PUT")
   val DELETE = Value("DELETE")
   def apply(s:String) = 
-   elements.find(_.toString == s.toUpperCase) . 
+   valueOf(s.toUpperCase) . 
      getOrElse (error("unkown method"))
 }

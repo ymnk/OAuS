@@ -33,7 +33,7 @@ package com.jcraft.oaus
  * [1] http://tools.ietf.org/rfc/rfc5849.txt
  */
 
-private object Util {
+object Util {
 
   /**
    * 3.6 Percent Encoding

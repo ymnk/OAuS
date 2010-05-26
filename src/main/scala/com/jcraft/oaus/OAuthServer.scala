@@ -28,8 +28,7 @@ modification, are permitted provided that the following conditions are met:
 package com.jcraft.oaus
 
 import java.net.{URL, HttpURLConnection}
-import scala.io.Source.fromInputStream
-
+ 
 /** 
  * Comments will refer to 'The OAuth 1.0 Protocol'[1].
  *
@@ -79,8 +78,7 @@ trait OAuthServer {
 
     urlConn.getResponseCode match{
       case 200 =>
-        val response = 
-          fromInputStream(urlConn.getInputStream, "UTF-8").getLines mkString ""
+        val response = fromInputStream(urlConn.getInputStream)
         val map = response2Map(response) 
         TemporaryCredential(map("oauth_token"), map("oauth_token_secret"))
       case c => 
@@ -117,8 +115,7 @@ trait OAuthServer {
 
     urlConn.getResponseCode match{
       case 200 =>
-        val response = 
-          fromInputStream(urlConn.getInputStream, "UTF-8").getLines mkString ""
+        val response = fromInputStream(urlConn.getInputStream)
         val map = response2Map(response) 
         TokenCredential(map("oauth_token"), map("oauth_token_secret"))
       case c => 
@@ -130,6 +127,27 @@ trait OAuthServer {
   private def response2Map(response:String): Map[String, String] = 
     response.split("&").foldLeft(Map[String,String]()){ case (s, v) => 
       s + {v.split("=") match {case Array(k, v) => (k, v)}}
+  }
+
+  private def fromInputStream(_in: java.io.InputStream) = {
+    import java.io._
+    val in = new BufferedReader(new InputStreamReader(_in, "UTF-8"))
+    try {
+      val buf = new StringBuilder
+      def loop(s: String): String ={
+        if(s!=null) {
+          buf.append(s)
+          loop(in.readLine)
+        }
+        else{
+          buf.toString
+        }
+      }
+      loop(in.readLine)
+    } 
+    finally{
+      in.close     
+    }
   }
 }
 
